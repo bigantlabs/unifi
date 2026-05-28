@@ -31,32 +31,27 @@ COPY scripts/docker-entrypoint.sh scripts/docker-healthcheck.sh /usr/local/bin/
 RUN set -eux \
     && apt-get update \
     && apt-get -y --no-install-recommends install \
-        apt-utils \
         ca-certificates \
-        ca-certificates-java \
         curl \
-        dirmngr \
-        gnupg2 \
-        tini \
-    && apt-get -y --no-install-recommends install \
-        openjdk-11-jre-headless \
+        gnupg \
     && curl -fsSL https://pgp.mongodb.com/server-5.0.asc \
         | gpg -o /usr/share/keyrings/mongodb-server-5.0.gpg --dearmor \
     && echo "deb [signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg] http://repo.mongodb.org/apt/debian bullseye/mongodb-org/5.0 main" \
         > /etc/apt/sources.list.d/mongodb-org-5.0.list \
     && apt-get update \
     && apt-get -y --no-install-recommends install \
-        mongodb-org-server \
-    && apt-get -y --no-install-recommends install \
         binutils \
+        ca-certificates-java \
         libcap2 \
         libcap2-bin \
         logrotate \
+        mongodb-org-server \
+        openjdk-11-jre-headless \
         procps \
+        tini \
     && curl -fsSL "https://dl.ui.com/unifi/${VERSION}/unifi_sysvinit_all.deb" -o "/tmp/unifi-${VERSION}.deb" \
     && dpkg -i --force-depends "/tmp/unifi-${VERSION}.deb" \
-    && apt-get -y purge \
-        apt-utils dirmngr gnupg2 \
+    && apt-get -y purge gnupg \
     && apt-get -y autoremove --purge \
     && rm -rf \
         "/tmp/unifi-${VERSION}.deb" \
