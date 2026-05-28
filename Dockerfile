@@ -47,6 +47,12 @@ RUN set -eux \
     && apt-get update \
     && apt-get -y --no-install-recommends install \
         mongodb-org-server \
+    && apt-get -y --no-install-recommends install \
+        binutils \
+        libcap2 \
+        libcap2-bin \
+        logrotate \
+        procps \
     && curl -fsSL "https://dl.ui.com/unifi/${VERSION}/unifi_sysvinit_all.deb" -o "/tmp/unifi-${VERSION}.deb" \
     && dpkg -i --force-depends "/tmp/unifi-${VERSION}.deb" \
     && apt-get -y purge \
