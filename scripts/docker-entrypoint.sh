@@ -27,23 +27,24 @@ if [[ "$(id -u "${UNIFI_USER}")" != "${PUID}" ]]; then
     usermod -o -u "${PUID}" "${UNIFI_USER}"
 fi
 
-mkdir -p \
-    "${UNIFI_HOME}/cert" \
-    "${UNIFI_HOME}/data" \
-    "${UNIFI_HOME}/logs" \
-    "${UNIFI_HOME}/run" \
-    "${UNIFI_HOME}/work"
+for dir in cert data logs run work; do
+    target="$(readlink -f "${UNIFI_HOME}/${dir}" 2>/dev/null || echo "${UNIFI_HOME}/${dir}")"
+    mkdir -p "${target}"
+done
 
 if [[ "${RUN_CHOWN:-true}" == "true" ]]; then
-    log "chowning ${UNIFI_HOME} subdirs to ${PUID}:${PGID}"
+    log "chowning ${UNIFI_HOME} runtime dirs to ${PUID}:${PGID} (resolving symlinks)"
     for dir in cert data logs run work; do
-        if ! chown -R "${PUID}:${PGID}" "${UNIFI_HOME}/${dir}"; then
-            die "chown of ${UNIFI_HOME}/${dir} failed. Check that the bind-mount is writable and that the container started as root."
+        target="$(readlink -f "${UNIFI_HOME}/${dir}")"
+        if ! chown -R "${PUID}:${PGID}" "${target}"; then
+            die "chown of ${target} (from ${UNIFI_HOME}/${dir}) failed. Check that the bind-mount is writable and the container started as root."
         fi
     done
 else
     log "RUN_CHOWN=false; skipping chown. Current ownership:"
-    ls -ld "${UNIFI_HOME}"/{cert,data,logs,run,work}
+    for dir in cert data logs run work; do
+        ls -lad "$(readlink -f "${UNIFI_HOME}/${dir}")"
+    done
 fi
 
 if [[ "${BIND_PRIV:-false}" == "true" ]]; then
