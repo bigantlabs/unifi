@@ -29,6 +29,30 @@ Pin to a specific UniFi version:
 docker pull ghcr.io/bigantlabs/unifi:$(cat VERSION)
 ```
 
+## Networking
+
+UniFi advertises its own IP to devices during adoption ("inform host"). The right value depends on how you network the container:
+
+| Mode | Set `UNIFI_INFORM_HOST`? |
+|---|---|
+| `--network=host` | No — UniFi sees the host's real IP |
+| `macvlan` (container has its own LAN IP) | No — UniFi sees that LAN IP |
+| `bridge` with port forwarding (the Docker default) | **Yes** — set to the host's LAN IP |
+
+Under bridge networking, UniFi's auto-detected IP is the container's private Docker IP (e.g. `172.18.0.x`), which APs cannot route to. Adoptions reach the controller via the forwarded port, then stall in "adopting" with `two-phase-adoption: timed out` errors in `logs/server.log` because the controller is telling APs to inform back at an IP they can't reach.
+
+Fix by passing the host's LAN IP (or a DNS name that resolves to it) as an env var:
+
+```bash
+docker run -d \
+  -e UNIFI_INFORM_HOST=192.168.1.2 \
+  -p 8080:8080 -p 8443:8443 -p 3478:3478/udp -p 10001:10001/udp \
+  -v /path/to/data:/usr/lib/unifi/data \
+  ghcr.io/bigantlabs/unifi:latest
+```
+
+The entrypoint writes `system_ip` and `unifi.https.hostname` into `data/system.properties` on every start. You can also set `UNIFI_HTTP_PORT` / `UNIFI_HTTPS_PORT` the same way if you remap ports on the container side (rare — note that **8080 is hardcoded in AP firmware** for inform, so don't remap the container-side port).
+
 ## Migrating from a UniFi 7.x image
 
 The 10.x image bundles MongoDB 7.0, which is not an in-place upgrade from the Mongo 5.0 that 7.x images shipped. Migrate via UniFi's own backup/restore:

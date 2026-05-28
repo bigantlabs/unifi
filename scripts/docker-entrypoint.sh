@@ -53,6 +53,35 @@ if [[ "${BIND_PRIV:-false}" == "true" ]]; then
     setcap 'cap_net_bind_service=+ep' "${JAVA_BIN}"
 fi
 
+# Apply optional system.properties overrides from env vars. Essential under
+# Docker bridge networking, where UniFi otherwise advertises its internal
+# Docker IP to devices and adoption stalls in two-phase-adoption timeouts.
+SYSPROPS="${UNIFI_HOME}/data/system.properties"
+declare -A SYSPROP_OVERRIDES=(
+    [system_ip]="${UNIFI_INFORM_HOST:-}"
+    [unifi.https.hostname]="${UNIFI_INFORM_HOST:-}"
+    [unifi.http.port]="${UNIFI_HTTP_PORT:-}"
+    [unifi.https.port]="${UNIFI_HTTPS_PORT:-}"
+)
+
+sysprop_touched=0
+for key in "${!SYSPROP_OVERRIDES[@]}"; do
+    value="${SYSPROP_OVERRIDES[$key]}"
+    [[ -z "$value" ]] && continue
+    if [[ $sysprop_touched -eq 0 ]]; then
+        log "applying system.properties overrides from env"
+        touch "$SYSPROPS"
+        chown "${PUID}:${PGID}" "$SYSPROPS"
+        sysprop_touched=1
+    fi
+    if grep -q "^${key}=" "$SYSPROPS"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$SYSPROPS"
+    else
+        printf '%s=%s\n' "$key" "$value" >> "$SYSPROPS"
+    fi
+    log "  ${key}=${value}"
+done
+
 if [[ "$1" != "unifi" ]]; then
     exec "$@"
 fi
