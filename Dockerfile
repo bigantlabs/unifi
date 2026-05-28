@@ -28,29 +28,30 @@ WORKDIR /usr/lib/unifi
 
 COPY scripts/docker-entrypoint.sh scripts/docker-healthcheck.sh /usr/local/bin/
 
-RUN apt-get -qqy update \
-    && apt-get -qqy --no-install-recommends install \
+RUN set -eux \
+    && apt-get update \
+    && apt-get -y --no-install-recommends install \
         apt-utils \
         ca-certificates \
         ca-certificates-java \
         curl \
         dirmngr \
         gnupg2 \
-        tini > /dev/null \
-    && apt-get -qqy --no-install-recommends install \
-        openjdk-17-jre-headless > /dev/null \
+        tini \
+    && apt-get -y --no-install-recommends install \
+        openjdk-11-jre-headless \
     && curl -fsSL https://pgp.mongodb.com/server-5.0.asc \
         | gpg -o /usr/share/keyrings/mongodb-server-5.0.gpg --dearmor \
     && echo "deb [signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg] http://repo.mongodb.org/apt/debian bullseye/mongodb-org/5.0 main" \
         > /etc/apt/sources.list.d/mongodb-org-5.0.list \
-    && apt-get -qqy update \
-    && apt-get -qqy --no-install-recommends install \
-        mongodb-org-server > /dev/null \
+    && apt-get update \
+    && apt-get -y --no-install-recommends install \
+        mongodb-org-server \
     && curl -fsSL "https://dl.ui.com/unifi/${VERSION}/unifi_sysvinit_all.deb" -o "/tmp/unifi-${VERSION}.deb" \
-    && apt-get -qqy --no-install-recommends install "/tmp/unifi-${VERSION}.deb" > /dev/null \
-    && apt-get -qqy purge \
-        apt-utils dirmngr gnupg2 > /dev/null \
-    && apt-get -qqy autoremove --purge > /dev/null \
+    && apt-get -y --no-install-recommends install "/tmp/unifi-${VERSION}.deb" \
+    && apt-get -y purge \
+        apt-utils dirmngr gnupg2 \
+    && apt-get -y autoremove --purge \
     && rm -rf \
         "/tmp/unifi-${VERSION}.deb" \
         /var/lib/apt/lists/* \
