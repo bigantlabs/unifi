@@ -48,7 +48,7 @@ RUN set -eux \
     && apt-get -y --no-install-recommends install \
         mongodb-org-server \
     && curl -fsSL "https://dl.ui.com/unifi/${VERSION}/unifi_sysvinit_all.deb" -o "/tmp/unifi-${VERSION}.deb" \
-    && apt-get -y --no-install-recommends install "/tmp/unifi-${VERSION}.deb" \
+    && dpkg -i --force-depends "/tmp/unifi-${VERSION}.deb" \
     && apt-get -y purge \
         apt-utils dirmngr gnupg2 \
     && apt-get -y autoremove --purge \
