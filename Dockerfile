@@ -50,11 +50,20 @@ RUN set -eux \
         procps \
         tini \
     && curl -fsSL "https://dl.ui.com/unifi/${VERSION}/unifi_sysvinit_all.deb" -o "/tmp/unifi-${VERSION}.deb" \
-    && dpkg -i --force-depends "/tmp/unifi-${VERSION}.deb" \
+    && mkdir -p /tmp/unifi-deb \
+    && dpkg-deb -R "/tmp/unifi-${VERSION}.deb" /tmp/unifi-deb \
+    && echo "--- Original Depends ---" \
+    && grep -E '^Depends:' /tmp/unifi-deb/DEBIAN/control \
+    && sed -i -E 's/mongodb-(server|10gen|org-server) *\([^)]*\)/mongodb-\1/g' /tmp/unifi-deb/DEBIAN/control \
+    && echo "--- Patched Depends ---" \
+    && grep -E '^Depends:' /tmp/unifi-deb/DEBIAN/control \
+    && dpkg-deb -b /tmp/unifi-deb "/tmp/unifi-${VERSION}.deb" \
+    && apt-get -y --no-install-recommends install "/tmp/unifi-${VERSION}.deb" \
     && apt-get -y purge gnupg \
     && apt-get -y autoremove --purge \
     && rm -rf \
         "/tmp/unifi-${VERSION}.deb" \
+        /tmp/unifi-deb \
         /var/lib/apt/lists/* \
         /var/cache/apt/archives/*.deb \
     && chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-healthcheck.sh
