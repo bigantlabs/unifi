@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -9,7 +9,7 @@ LABEL \
     org.opencontainers.image.revision="${VCS_REF}" \
     org.opencontainers.image.version="${VERSION}" \
     org.opencontainers.image.title="unifi" \
-    org.opencontainers.image.description="UniFi Network Controller" \
+    org.opencontainers.image.description="UniFi Network Application" \
     org.opencontainers.image.source="https://github.com/bigantlabs/unifi"
 
 ENV \
@@ -34,36 +34,30 @@ RUN set -eux \
         ca-certificates \
         curl \
         gnupg \
-    && curl -fsSL https://pgp.mongodb.com/server-5.0.asc \
-        | gpg -o /usr/share/keyrings/mongodb-server-5.0.gpg --dearmor \
-    && echo "deb [signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg] http://repo.mongodb.org/apt/debian bullseye/mongodb-org/5.0 main" \
-        > /etc/apt/sources.list.d/mongodb-org-5.0.list \
+    && curl -fsSL https://pgp.mongodb.com/server-7.0.asc \
+        | gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor \
+    && echo "deb [signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" \
+        > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public \
+        | gpg -o /usr/share/keyrings/adoptium.gpg --dearmor \
+    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" \
+        > /etc/apt/sources.list.d/adoptium.list \
     && apt-get update \
     && apt-get -y --no-install-recommends install \
         binutils \
-        ca-certificates-java \
         libcap2 \
         libcap2-bin \
         logrotate \
         mongodb-org-server \
-        openjdk-11-jre-headless \
         procps \
+        temurin-25-jre \
         tini \
     && curl -fsSL "https://dl.ui.com/unifi/${VERSION}/unifi_sysvinit_all.deb" -o "/tmp/unifi-${VERSION}.deb" \
-    && mkdir -p /tmp/unifi-deb \
-    && dpkg-deb -R "/tmp/unifi-${VERSION}.deb" /tmp/unifi-deb \
-    && echo "--- Original Depends ---" \
-    && grep -E '^Depends:' /tmp/unifi-deb/DEBIAN/control \
-    && sed -i -E 's/mongodb-(server|10gen|org-server) *\([^)]*\)/mongodb-\1/g' /tmp/unifi-deb/DEBIAN/control \
-    && echo "--- Patched Depends ---" \
-    && grep -E '^Depends:' /tmp/unifi-deb/DEBIAN/control \
-    && dpkg-deb -b /tmp/unifi-deb "/tmp/unifi-${VERSION}.deb" \
     && apt-get -y --no-install-recommends install "/tmp/unifi-${VERSION}.deb" \
     && apt-get -y purge gnupg \
     && apt-get -y autoremove --purge \
     && rm -rf \
         "/tmp/unifi-${VERSION}.deb" \
-        /tmp/unifi-deb \
         /var/lib/apt/lists/* \
         /var/cache/apt/archives/*.deb \
     && chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-healthcheck.sh
