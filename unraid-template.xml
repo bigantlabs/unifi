@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Unifi</Name>
+  <Repository>ghcr.io/bigantlabs/unifi:10.4.57</Repository>
+  <Registry>https://github.com/bigantlabs/unifi</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/bigantlabs/unifi/issues</Support>
+  <Project>https://www.ui.com</Project>
+  <Overview>Containerized UniFi Network Application (formerly UniFi Controller) for managing UniFi access points, switches, and gateways. Built on Debian Bookworm with Eclipse Temurin 25 JRE and MongoDB 7.0. CPU must support AVX (Intel Sandy Bridge / AMD Bulldozer or newer).</Overview>
+  <Category>Network:Management Tools:Utilities</Category>
+  <WebUI>https://[IP]:[PORT:8443]</WebUI>
+  <TemplateURL/>
+  <Icon>https://dl.ubnt.com/press/Company_Logos/U_Logo/WEB/U_Logo_RGB.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <Config Name="STUN" Target="3478" Default="3478" Mode="udp"
+    Description="STUN port used by UniFi devices for NAT traversal when the controller is behind NAT. Required for device communication. Do not change."
+    Type="Port" Display="always" Required="true" Mask="false">3478</Config>
+
+  <Config Name="Device Discovery" Target="10001" Default="10001" Mode="udp"
+    Description="Layer-2 discovery port. Allows the controller to find UniFi devices on the local network and respond to discovery broadcasts. Required for L2 adoption."
+    Type="Port" Display="always" Required="true" Mask="false">10001</Config>
+
+  <Config Name="Device Inform" Target="8080" Default="8080" Mode="tcp"
+    Description="THE critical port. UniFi APs, switches, and gateways phone home to this port to report status and receive config. This port is HARDCODED in device firmware - do NOT change the container-side port. If you must remap on the host, only change the left-hand value."
+    Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+
+  <Config Name="Web UI (HTTPS)" Target="8443" Default="8443" Mode="tcp"
+    Description="Web interface for the UniFi Network Application. Access at https://[your-server-ip]:8443 after the container starts. Self-signed cert by default."
+    Type="Port" Display="always" Required="true" Mask="false">8443</Config>
+
+  <Config Name="Mobile Speedtest" Target="6789" Default="6789" Mode="tcp"
+    Description="Used by the UniFi mobile app to run throughput tests against the controller. Optional - only needed if you use the mobile speed test feature."
+    Type="Port" Display="advanced" Required="false" Mask="false">6789</Config>
+
+  <Config Name="Guest Portal (HTTPS)" Target="8843" Default="8843" Mode="tcp"
+    Description="HTTPS port for the captive guest portal redirect. Only required if you run a guest network with a captive portal. Safe to leave open even if unused."
+    Type="Port" Display="advanced" Required="false" Mask="false">8843</Config>
+
+  <Config Name="Guest Portal (HTTP)" Target="8880" Default="8880" Mode="tcp"
+    Description="HTTP port for the captive guest portal redirect. Only required if you run a guest network with a captive portal. Safe to leave open even if unused."
+    Type="Port" Display="advanced" Required="false" Mask="false">8880</Config>
+
+  <Config Name="Data" Target="/usr/lib/unifi/data" Default="/mnt/cache/appdata/unifi/data" Mode="rw"
+    Description="UniFi configuration, MongoDB database, site settings, device records, and backups. This is the most important volume - back it up regularly. Losing this means re-adopting every device."
+    Type="Path" Display="always" Required="true" Mask="false">/mnt/cache/appdata/unifi/data</Config>
+
+  <Config Name="Logs" Target="/usr/lib/unifi/logs" Default="/mnt/cache/appdata/unifi/logs" Mode="rw"
+    Description="UniFi application logs (server.log, mongod.log, etc.). Useful for debugging adoption issues, MongoDB problems, and upgrade failures. Safe to wipe if it grows large."
+    Type="Path" Display="always" Required="true" Mask="false">/mnt/cache/appdata/unifi/logs</Config>
+
+  <Config Name="Cert" Target="/usr/lib/unifi/cert" Default="/mnt/cache/appdata/unifi/cert" Mode="rw"
+    Description="TLS certificate store for the controller. Persist this if you install a custom cert (e.g. Let's Encrypt) and want it to survive container rebuilds. The default self-signed cert is auto-generated on first boot if this is empty."
+    Type="Path" Display="advanced" Required="false" Mask="false">/mnt/cache/appdata/unifi/cert</Config>
+
+  <Config Name="Inform Host" Target="UNIFI_INFORM_HOST" Default="" Mode=""
+    Description="The IP or hostname that UniFi devices should use to reach this controller. CRITICAL when using Docker bridge networking with port forwarding: set this to your Docker host's LAN IP (e.g. 192.168.1.2). Without it, UniFi advertises its internal Docker IP, devices cannot route to it, and adoptions get stuck with 'two-phase-adoption: timed out' errors in the server log. Leave blank if using macvlan or --network=host (the container already has a real LAN IP). The entrypoint writes this to data/system.properties at boot."
+    Type="Variable" Display="always" Required="false" Mask="false"></Config>
+
+</Container>
