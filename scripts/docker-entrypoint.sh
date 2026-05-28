@@ -27,14 +27,14 @@ if [[ "$(id -u "${UNIFI_USER}")" != "${PUID}" ]]; then
     usermod -o -u "${PUID}" "${UNIFI_USER}"
 fi
 
-for dir in cert data logs run work; do
+for dir in cert data dl logs run work; do
     target="$(readlink -f "${UNIFI_HOME}/${dir}" 2>/dev/null || echo "${UNIFI_HOME}/${dir}")"
     mkdir -p "${target}"
 done
 
 if [[ "${RUN_CHOWN:-true}" == "true" ]]; then
     log "chowning ${UNIFI_HOME} runtime dirs to ${PUID}:${PGID} (resolving symlinks)"
-    for dir in cert data logs run work; do
+    for dir in cert data dl logs run work; do
         target="$(readlink -f "${UNIFI_HOME}/${dir}")"
         if ! chown -R "${PUID}:${PGID}" "${target}"; then
             die "chown of ${target} (from ${UNIFI_HOME}/${dir}) failed. Check that the bind-mount is writable and the container started as root."
@@ -42,7 +42,7 @@ if [[ "${RUN_CHOWN:-true}" == "true" ]]; then
     done
 else
     log "RUN_CHOWN=false; skipping chown. Current ownership:"
-    for dir in cert data logs run work; do
+    for dir in cert data dl logs run work; do
         ls -lad "$(readlink -f "${UNIFI_HOME}/${dir}")"
     done
 fi
