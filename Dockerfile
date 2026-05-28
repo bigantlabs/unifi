@@ -4,8 +4,13 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION
 
-# LABEL \
-    
+LABEL \
+    org.opencontainers.image.created="${BUILD_DATE}" \
+    org.opencontainers.image.revision="${VCS_REF}" \
+    org.opencontainers.image.version="${VERSION}" \
+    org.opencontainers.image.title="unifi" \
+    org.opencontainers.image.description="UniFi Network Controller" \
+    org.opencontainers.image.source="https://github.com/bigantlabs/unifi"
 
 ENV \
     BIND_PRIV=false \
