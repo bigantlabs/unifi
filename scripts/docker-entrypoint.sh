@@ -6,31 +6,46 @@ UNIFI_USER=unifi
 UNIFI_GROUP=unifi
 
 log() { printf '[entrypoint] %s\n' "$*"; }
+die() { printf '[entrypoint] FATAL: %s\n' "$*" >&2; exit 1; }
 
 if [[ "${DEBUG:-false}" == "true" ]]; then
     set -x
 fi
 
-# Align unifi user/group to PUID/PGID so bind-mounted volumes are writable.
-if [[ "$(id -u "${UNIFI_USER}")" != "${PUID}" ]]; then
-    log "setting ${UNIFI_USER} uid to ${PUID}"
-    usermod -o -u "${PUID}" "${UNIFI_USER}"
+if [[ "$(id -u)" != "0" ]]; then
+    die "must start as root to set PUID/PGID and chown volumes (currently uid $(id -u)). Remove any --user flag from your container config and let the entrypoint demote."
 fi
+
+log "starting as uid=$(id -u) gid=$(id -g), target PUID=${PUID} PGID=${PGID}"
+
 if [[ "$(getent group "${UNIFI_GROUP}" | cut -d: -f3)" != "${PGID}" ]]; then
     log "setting ${UNIFI_GROUP} gid to ${PGID}"
     groupmod -o -g "${PGID}" "${UNIFI_GROUP}"
 fi
-
-if [[ "${RUN_CHOWN:-true}" == "true" ]]; then
-    log "chowning ${UNIFI_HOME} to ${UNIFI_USER}:${UNIFI_GROUP}"
-    chown -R "${UNIFI_USER}:${UNIFI_GROUP}" \
-        "${UNIFI_HOME}/cert" \
-        "${UNIFI_HOME}/data" \
-        "${UNIFI_HOME}/logs" \
-        "${UNIFI_HOME}/work" 2>/dev/null || true
+if [[ "$(id -u "${UNIFI_USER}")" != "${PUID}" ]]; then
+    log "setting ${UNIFI_USER} uid to ${PUID}"
+    usermod -o -u "${PUID}" "${UNIFI_USER}"
 fi
 
-# Grant the JVM ability to bind privileged ports (e.g. 443) without running as root.
+mkdir -p \
+    "${UNIFI_HOME}/cert" \
+    "${UNIFI_HOME}/data" \
+    "${UNIFI_HOME}/logs" \
+    "${UNIFI_HOME}/run" \
+    "${UNIFI_HOME}/work"
+
+if [[ "${RUN_CHOWN:-true}" == "true" ]]; then
+    log "chowning ${UNIFI_HOME} subdirs to ${PUID}:${PGID}"
+    for dir in cert data logs run work; do
+        if ! chown -R "${PUID}:${PGID}" "${UNIFI_HOME}/${dir}"; then
+            die "chown of ${UNIFI_HOME}/${dir} failed. Check that the bind-mount is writable and that the container started as root."
+        fi
+    done
+else
+    log "RUN_CHOWN=false; skipping chown. Current ownership:"
+    ls -ld "${UNIFI_HOME}"/{cert,data,logs,run,work}
+fi
+
 if [[ "${BIND_PRIV:-false}" == "true" ]]; then
     log "granting cap_net_bind_service to java"
     JAVA_BIN=$(readlink -f "$(command -v java)")
@@ -55,9 +70,6 @@ if [[ -n "${JVM_EXTRA_OPTS:-}" ]]; then
     JVM_OPTS+=( ${JVM_EXTRA_OPTS} )
 fi
 
-mkdir -p "${UNIFI_HOME}/run"
-chown "${UNIFI_USER}:${UNIFI_GROUP}" "${UNIFI_HOME}/run"
-
 cd "${UNIFI_HOME}"
 
 CMD=( java "${JVM_OPTS[@]}" -jar "${UNIFI_HOME}/lib/ace.jar" start )
@@ -66,6 +78,6 @@ if [[ "${RUNAS_UID0:-false}" == "true" ]]; then
     log "starting unifi as root"
     exec "${CMD[@]}"
 else
-    log "starting unifi as ${UNIFI_USER}"
+    log "starting unifi as ${UNIFI_USER} (uid=${PUID} gid=${PGID})"
     exec setpriv --reuid="${UNIFI_USER}" --regid="${UNIFI_GROUP}" --init-groups "${CMD[@]}"
 fi
