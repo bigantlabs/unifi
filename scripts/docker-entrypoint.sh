@@ -57,9 +57,21 @@ if [[ "$1" != "unifi" ]]; then
     exec "$@"
 fi
 
-JVM_OPTS=( -Dunifi.datadir="${UNIFI_HOME}/data"
+JVM_OPTS=( -Dfile.encoding=UTF-8
+           -Djava.awt.headless=true
+           -Dapple.awt.UIElement=true
+           -Dunifi.datadir="${UNIFI_HOME}/data"
            -Dunifi.logdir="${UNIFI_HOME}/logs"
            -Dunifi.rundir="${UNIFI_HOME}/run"
+           -XX:+UseParallelGC
+           -XX:+ExitOnOutOfMemoryError
+           -XX:+CrashOnOutOfMemoryError
+           -XX:ErrorFile="${UNIFI_HOME}/logs/hs_err_pid%p.log"
+           --add-opens java.base/java.lang=ALL-UNNAMED
+           --add-opens java.base/java.time=ALL-UNNAMED
+           --add-opens java.base/sun.security.util=ALL-UNNAMED
+           --add-opens java.base/java.io=ALL-UNNAMED
+           --add-opens java.rmi/sun.rmi.transport=ALL-UNNAMED
            -Xmx"${JVM_MAX_HEAP_SIZE}" )
 
 if [[ -n "${JVM_INIT_HEAP_SIZE:-}" ]]; then
