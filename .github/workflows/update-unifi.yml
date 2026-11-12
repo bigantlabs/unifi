@@ -20,7 +20,8 @@ jobs:
         id: latest
         run: |
           set -euo pipefail
-          URL='https://fw-update.ubnt.com/api/firmware-latest?filter=eq~~product~~unifi-controller&filter=eq~~channel~~release&filter=eq~~platform~~debian'
+          # Ubiquiti's update server, same lookup linuxserver.io uses
+          URL='https://fw-update.ubnt.com/api/firmware-latest?filter=eq~~product~~unifi-controller&filter=eq~~platform~~unix&filter=eq~~channel~~release'
           RAW=$(curl -fsSL "$URL" | jq -r '._embedded.firmware[0].version')
           # Strip a leading "v" and any build suffix, keeping just X.Y.Z
           LATEST=$(echo "$RAW" | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
@@ -57,9 +58,9 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: unifi-${{ steps.latest.outputs.version }}
+          assignees: bigantlabs
           commit-message: Update UniFi to ${{ steps.latest.outputs.version }}
           title: Update UniFi to ${{ steps.latest.outputs.version }}
-          asignees: bigantlabs
           body: |
             UniFi Network Application ${{ steps.latest.outputs.version }} is available (currently on ${{ steps.latest.outputs.current }}).
 
