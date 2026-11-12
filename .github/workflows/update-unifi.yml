@@ -1,0 +1,67 @@
+name: Check for UniFi updates
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # daily at 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find latest UniFi release
+        id: latest
+        run: |
+          set -euo pipefail
+          URL='https://fw-update.ubnt.com/api/firmware-latest?filter=eq~~product~~unifi-controller&filter=eq~~channel~~release&filter=eq~~platform~~debian'
+          RAW=$(curl -fsSL "$URL" | jq -r '._embedded.firmware[0].version')
+          # Strip a leading "v" and any build suffix, keeping just X.Y.Z
+          LATEST=$(echo "$RAW" | sed -E 's/^v//; s/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          CURRENT=$(tr -d '[:space:]' < VERSION)
+          echo "Current: $CURRENT  Latest: $LATEST (raw: $RAW)"
+
+          if [[ ! "$LATEST" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Could not parse a version from Ubiquiti's response" >&2
+            exit 1
+          fi
+
+          # Only update if the new version is actually newer
+          NEWEST=$(printf '%s\n%s\n' "$CURRENT" "$LATEST" | sort -V | tail -n1)
+          if [[ "$LATEST" == "$CURRENT" || "$NEWEST" != "$LATEST" ]]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Make sure the download actually exists before proposing it
+          curl -fsI "https://dl.ui.com/unifi/${LATEST}/unifi_sysvinit_all.deb" > /dev/null
+
+          echo "update=true" >> "$GITHUB_OUTPUT"
+          echo "version=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version
+        if: steps.latest.outputs.update == 'true'
+        run: |
+          echo "${{ steps.latest.outputs.version }}" > VERSION
+          sed -i -E "s|(ghcr.io/bigantlabs/unifi:)[^<]+|\1${{ steps.latest.outputs.version }}|" unraid-template.xml
+
+      - name: Open pull request
+        if: steps.latest.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: unifi-${{ steps.latest.outputs.version }}
+          commit-message: Update UniFi to ${{ steps.latest.outputs.version }}
+          title: Update UniFi to ${{ steps.latest.outputs.version }}
+          asignees: bigantlabs
+          body: |
+            UniFi Network Application ${{ steps.latest.outputs.version }} is available (currently on ${{ steps.latest.outputs.current }}).
+
+            Release notes: https://community.ui.com/releases
+          delete-branch: true
